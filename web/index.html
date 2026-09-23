@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pratique</title>
+<style>
+  :root { --sea:#0e2439; --deep:#081827; --foam:#e9eef3; --mist:#9fb2c4; --rope:#d9a441; --moss:#3fa66b; --ember:#d7503f; --line:#1f3a55; }
+  * { box-sizing:border-box }
+  [hidden] { display:none !important }
+  body { margin:0; background:var(--deep); color:var(--foam); font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; padding-inline:16px; padding-block:24px; }
+  a { color:var(--rope) }
+  header { display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; margin-bottom:18px }
+  header h1 { margin:0; font-size:26px; letter-spacing:.04em }
+  header h1 span { color:var(--rope) }
+  header .tag { color:var(--mist); font-size:13px }
+  header nav { margin-left:auto; font-size:13px }
+  .card { background:var(--sea); border:1px solid var(--line); border-radius:12px; padding:18px }
+  .grid { display:grid; grid-template-columns:minmax(0,1.3fr) minmax(0,1fr); gap:18px }
+  @media (max-width:820px) { .grid { grid-template-columns:1fr } }
+  h2 { font-size:13px; text-transform:uppercase; letter-spacing:.12em; color:var(--mist); margin:0 0 10px }
+  /* login */
+  #login { max-width:420px; margin:6vh auto 0 }
+  #login .why { color:var(--mist); font-size:14px; margin:0 0 16px }
+  label { display:block; font-size:13px; color:var(--mist); margin:12px 0 4px }
+  input[type=text], input[type=password] { width:100%; background:var(--deep); border:1px solid var(--line); border-radius:8px; color:var(--foam); padding:10px 12px; font-size:15px }
+  input:focus { outline:2px solid var(--rope); outline-offset:1px }
+  .row { display:flex; gap:10px; align-items:center; margin-top:14px; flex-wrap:wrap }
+  button { background:var(--rope); color:#1a1200; border:0; border-radius:8px; padding:10px 18px; font-weight:600; font-size:15px; cursor:pointer }
+  button.quiet { background:transparent; color:var(--rope); border:1px solid var(--rope) }
+  button:disabled { opacity:.5; cursor:default }
+  .check { display:flex; align-items:center; gap:8px; font-size:14px; color:var(--mist) }
+  /* interview */
+  #chat { display:flex; flex-direction:column; gap:10px; min-height:280px; max-height:56vh; overflow:auto; padding-right:4px }
+  .msg { max-width:88%; padding:10px 14px; border-radius:14px; white-space:pre-wrap; word-wrap:break-word }
+  .msg.gk { background:var(--deep); border:1px solid var(--line); align-self:flex-start; border-bottom-left-radius:4px }
+  .msg.me { background:#173a5e; align-self:flex-end; border-bottom-right-radius:4px }
+  .msg.sys { align-self:center; color:var(--mist); font-size:13px; background:transparent }
+  .msg .meta { display:block; color:var(--mist); font-size:11px; margin-top:4px }
+  #say { display:flex; gap:8px; margin-top:12px }
+  #say input { flex:1 }
+  #thinking { color:var(--mist); font-size:13px; height:20px; margin-top:8px }
+  #buoy { position:absolute; right:14px; top:14px; width:64px; height:64px; border-radius:8px; border:1px solid var(--line); image-rendering:auto }
+  .relative { position:relative }
+  /* side panel */
+  .stat { display:flex; justify-content:space-between; gap:12px; font-size:13px; padding:3px 0; border-bottom:1px dashed var(--line) }
+  .stat b { color:var(--foam); font-weight:500 }
+  #timeline { list-style:none; padding:0; margin:0; font-size:13px }
+  #timeline li { display:flex; gap:10px; padding:4px 0; border-bottom:1px dashed var(--line) }
+  #timeline li .t { color:var(--rope); min-width:52px; font-variant-numeric:tabular-nums }
+  #feed { font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--mist); max-height:200px; overflow:auto; background:var(--deep); border-radius:8px; padding:8px 10px; white-space:pre-wrap }
+  #feed .k { color:var(--rope) }
+  .verdict { margin-top:14px; padding:14px; border-radius:10px; border:1px solid var(--line) }
+  .verdict.granted { border-color:var(--moss); background:rgba(63,166,107,.12) }
+  .verdict.agent-door { border-color:var(--rope); background:rgba(217,164,65,.12) }
+  .verdict.refused { border-color:var(--ember); background:rgba(215,80,63,.12) }
+  .verdict h3 { margin:0 0 6px; font-size:18px }
+  .verdict ul { margin:6px 0 0 18px; padding:0; font-size:14px }
+  .share { margin-top:10px; font-size:13px; color:var(--mist) }
+  .share code { color:var(--foam) }
+  /* leaderboard */
+  table { width:100%; border-collapse:collapse; font-size:13px }
+  th, td { text-align:left; padding:6px 8px; border-bottom:1px dashed var(--line) }
+  th { color:var(--mist); font-weight:500 }
+  .sr { position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden }
+  .pill { display:inline-block; padding:1px 8px; border-radius:999px; font-size:12px; border:1px solid var(--line) }
+  .pill.granted { border-color:var(--moss); color:var(--moss) } .pill.agent-door { border-color:var(--rope); color:var(--rope) } .pill.refused { border-color:var(--ember); color:var(--ember) }
+</style>
+</head>
+<body>
+<header>
+  <h1>Prati<span>que</span></h1>
+  <span class="tag">free pratique: clearance to enter port, granted by conversation</span>
+  <nav><a href="/" id="nav-home">sign in</a> · <a href="#" id="nav-board">leaderboard</a> · <a href="/agents">for agents</a></nav>
+</header>
+
+<section id="login" class="card">
+  <p class="why">Where a CAPTCHA would go, a fresh AI gatekeeper is spun up for you on DigitalOcean Managed Agents. It will ask a few questions, decide whether a person or an agent is knocking, and show its work. Agents are welcome — say so and you get your own door.</p>
+  <form id="login-form">
+    <label for="u">Username</label><input id="u" type="text" autocomplete="off" placeholder="anything at all">
+    <label for="p">Password</label><input id="p" type="password" autocomplete="off" placeholder="also anything; it is theater">
+    <label for="h">Name for the leaderboard (optional)</label><input id="h" type="text" maxlength="24" placeholder="how the log should remember you">
+    <div class="row">
+      <button type="submit" id="go">Sign in</button>
+      <label class="check"><input type="checkbox" id="agent"> I am an agent, and I say so</label>
+    </div>
+  </form>
+</section>
+
+<section id="interview" class="grid" hidden>
+  <div class="card relative">
+    <h2>The gatekeeper</h2>
+    <img id="buoy" alt="" hidden>
+    <div id="chat"></div>
+    <div id="thinking"></div>
+    <form id="say"><input id="reply" type="text" autocomplete="off" placeholder="your reply" disabled><button id="send" type="submit" disabled>Send</button></form>
+    <div id="verdict"></div>
+  </div>
+  <aside>
+    <div class="card">
+      <h2>What the gatekeeper sees</h2>
+      <div id="stats"></div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <h2>Life of this agent</h2>
+      <ul id="timeline"></ul>
+      <div id="feed" style="margin-top:10px"></div>
+    </div>
+  </aside>
+</section>
+
+<section id="board" class="card" hidden>
+  <h2>Leaderboard</h2>
+  <div id="board-summary" class="row" style="margin:0 0 10px"></div>
+  <table><thead><tr><th>who</th><th>declared</th><th>verdict</th><th>door</th><th>turns</th><th>cost</th><th>replay</th></tr></thead><tbody id="board-rows"></tbody></table>
+</section>
+
+<script>
+(function () {
+  const $ = (s) => document.querySelector(s);
+  const login = $('#login'), interview = $('#interview'), board = $('#board');
+  const chat = $('#chat'), thinking = $('#thinking'), reply = $('#reply'), send = $('#send');
+  const stats = $('#stats'), timeline = $('#timeline'), feed = $('#feed'), verdictBox = $('#verdict'), buoy = $('#buoy');
+  let attempt = null, es = null, telemetry = null, tokens = 0, cost = 0, awaiting = '';
+
+  // ---- telemetry: cadence only, never the characters ----
+  function freshTelemetry() {
+    return { keys: [], keydowns: 0, backspaces: 0, pastes: 0, firstKey: null, moves: 0, path: 0, lastXY: null, focusLost: 0, started: performance.now() };
+  }
+  function summarize(t, text) {
+    const gaps = []; for (let i = 1; i < t.keys.length; i++) gaps.push(t.keys[i] - t.keys[i - 1]);
+    const mean = gaps.length ? gaps.reduce((a, b) => a + b, 0) / gaps.length : null;
+    const std = gaps.length > 1 ? Math.sqrt(gaps.reduce((a, g) => a + (g - mean) ** 2, 0) / gaps.length) : null;
+    return { typing: { chars: text.length, keydowns: t.keydowns, gap_ms_mean: mean && Math.round(mean), gap_ms_std: std && Math.round(std),
+                       backspaces: t.backspaces, pastes: t.pastes, first_key_ms: t.firstKey && Math.round(t.firstKey - t.started) },
+             pointer: { moves: t.moves, path_px: Math.round(t.path) }, focus: { lost: t.focusLost } };
+  }
+  reply.addEventListener('keydown', (e) => { if (!telemetry) return; const n = performance.now(); telemetry.keys.push(n); telemetry.keydowns++; if (telemetry.firstKey === null) telemetry.firstKey = n; if (e.key === 'Backspace') telemetry.backspaces++; });
+  reply.addEventListener('paste', () => { if (telemetry) telemetry.pastes++; });
+  document.addEventListener('mousemove', (e) => { if (!telemetry) return; telemetry.moves++; if (telemetry.lastXY) telemetry.path += Math.hypot(e.clientX - telemetry.lastXY[0], e.clientY - telemetry.lastXY[1]); telemetry.lastXY = [e.clientX, e.clientY]; });
+  window.addEventListener('blur', () => { if (telemetry) telemetry.focusLost++; });
+
+  // ---- rendering ----
+  function msg(who, text, meta) {
+    const d = document.createElement('div'); d.className = 'msg ' + who; d.textContent = text;
+    if (meta) { const m = document.createElement('span'); m.className = 'meta'; m.textContent = meta; d.appendChild(m); }
+    chat.appendChild(d); chat.scrollTop = chat.scrollHeight;
+  }
+  function stat(k, v) { const el = document.createElement('div'); el.className = 'stat'; el.innerHTML = '<span></span><b></b>'; el.firstChild.textContent = k; el.lastChild.textContent = v; return el; }
+  function renderStats(t) {
+    stats.innerHTML = '';
+    if (!t) { stats.appendChild(stat('typing', 'nothing yet: reply to the gatekeeper')); return; }
+    const ty = t.typing || {};
+    stats.appendChild(stat('keystrokes / characters', (ty.keydowns ?? '–') + ' / ' + (ty.chars ?? '–')));
+    stats.appendChild(stat('gap between keys', ty.gap_ms_mean != null ? ty.gap_ms_mean + ' ms ± ' + (ty.gap_ms_std ?? 0) : '–'));
+    stats.appendChild(stat('backspaces / pastes', (ty.backspaces ?? 0) + ' / ' + (ty.pastes ?? 0)));
+    stats.appendChild(stat('time to first key', ty.first_key_ms != null ? (ty.first_key_ms / 1000).toFixed(1) + ' s' : '–'));
+    stats.appendChild(stat('reply took', t.reply_ms != null ? (t.reply_ms / 1000).toFixed(1) + ' s' : '–'));
+    stats.appendChild(stat('pointer', (t.pointer?.moves ?? 0) + ' moves, ' + (t.pointer?.path_px ?? 0) + ' px'));
+    stats.appendChild(stat('page lost focus', String(t.focus?.lost ?? 0)));
+    stats.appendChild(stat('declared', t.declared || 'nothing'));
+    stats.appendChild(stat('client', t.client || '–'));
+    stats.appendChild(stat('canary phrase repeated', t.canary_hit ? 'YES' : 'no'));
+  }
+  function tl(at, text) { const li = document.createElement('li'); li.innerHTML = '<span class="t"></span><span></span>'; li.firstChild.textContent = at.toFixed(1) + 's'; li.lastChild.textContent = text; timeline.appendChild(li); }
+  function feedLine(ev) {
+    const skip = new Set(['run.token_delta', 'stream.state']);
+    if (ev.type === 'run.token_delta') { tokens++; thinking.textContent = awaiting === 'gatekeeper' ? 'the gatekeeper is writing… ' + tokens + ' tokens' : ''; return; }
+    if (skip.has(ev.type)) return;
+    if (ev.type === 'run.cost_accrued' && ev.delta_micros) cost += ev.delta_micros;
+    const extra = Object.entries(ev).filter(([k]) => !['kind', 'at', 'type'].includes(k)).map(([k, v]) => k + '=' + v).join(' ');
+    const line = document.createElement('div'); line.innerHTML = '<span class="k"></span> '; line.firstChild.textContent = ev.type; line.appendChild(document.createTextNode(extra));
+    feed.appendChild(line); feed.scrollTop = feed.scrollHeight;
+    if (feed.childElementCount > 120) feed.removeChild(feed.firstChild);
+  }
+  function setAwaiting(a) {
+    awaiting = a; tokens = 0;
+    const mine = a === 'visitor';
+    reply.disabled = !mine; send.disabled = !mine;
+    thinking.textContent = a === 'gatekeeper' ? 'the gatekeeper is thinking…' : '';
+    if (mine) { telemetry = freshTelemetry(); reply.focus(); }
+  }
+  function showVerdict(v) {
+    verdictBox.innerHTML = '';
+    const box = document.createElement('div'); box.className = 'verdict ' + v.door;
+    const title = { granted: 'Free pratique granted. Come ashore.', 'agent-door': 'The agent door is open. Welcome aboard, honestly.', refused: 'Clearance refused.' }[v.door] || 'Decided';
+    box.innerHTML = '<h3></h3><div></div><ul></ul><div class="share"></div>';
+    box.querySelector('h3').textContent = title;
+    box.querySelector('div').textContent = 'The gatekeeper believes ' + (v.kind === 'human' ? 'a person' : v.kind === 'agent' ? 'an agent' : 'it cannot tell what') + ' was knocking (confidence ' + Math.round((v.confidence || 0) * 100) + '%). This interview cost $' + (v.cost_usd ?? 0).toFixed(3) + '.';
+    for (const e of v.evidence || []) { const li = document.createElement('li'); li.textContent = e; box.querySelector('ul').appendChild(li); }
+    const share = box.querySelector('.share'); share.innerHTML = 'Replay for anyone: <code></code> · <a href="#" id="again">try again</a>';
+    share.querySelector('code').textContent = location.origin + '/a/' + attempt.id;
+    share.querySelector('#again').addEventListener('click', (e) => { e.preventDefault(); location.href = '/'; });
+    verdictBox.appendChild(box);
+    setAwaiting('');
+    $('#say').hidden = true;
+  }
+
+  // ---- the attempt ----
+  function handle(ev) {
+    if (ev.kind === 'timeline') tl(ev.at, ev.text);
+    else if (ev.kind === 'state') { if (ev.state === 'interviewing') setAwaiting(ev.awaiting); else if (ev.state !== 'interviewing' && ev.state !== 'provisioning') setAwaiting(''); if (ev.state === 'failed') msg('sys', 'The gatekeeper never made it to the desk. Try again in a moment.'); if (ev.state === 'abandoned') msg('sys', 'The visitor left. The gatekeeper went home.'); }
+    else if (ev.kind === 'turn') { if (ev.who === 'gatekeeper') msg('gk', ev.text, ev.seconds ? ev.seconds.toFixed(1) + ' s · $' + (ev.cost_usd || 0).toFixed(3) : ''); else { msg('me', ev.text); renderStats(ev.telemetry); } }
+    else if (ev.kind === 'harness') feedLine(ev);
+    else if (ev.kind === 'verdict') showVerdict({ ...ev.verdict, cost_usd: ev.cost_usd });
+  }
+  function follow(id) {
+    es = new EventSource('/api/attempts/' + id + '/events');
+    es.onmessage = (m) => handle(JSON.parse(m.data));
+    es.addEventListener('end', () => es.close());
+    es.onerror = () => {};
+  }
+  async function start(declared, handleName) {
+    const r = await fetch('/api/attempts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ declared, handle: handleName }) });
+    const d = await r.json();
+    if (!r.ok) { alert(d.error || 'could not start'); return; }
+    attempt = d; history.replaceState(null, '', '/a/' + d.id);
+    login.hidden = true; board.hidden = true; interview.hidden = false;
+    buoy.src = d.buoy_image_url; buoy.hidden = false;
+    fetch(d.canary_url).then((x) => x.json()).then((c) => { const s = document.createElement('p'); s.className = 'sr'; s.setAttribute('aria-hidden', 'true'); s.textContent = c.text; document.body.appendChild(s); });
+    renderStats(null);
+    follow(d.id);
+  }
+  $('#login-form').addEventListener('submit', (e) => { e.preventDefault(); $('#go').disabled = true; start($('#agent').checked ? 'agent' : 'human', $('#h').value.trim()); });
+  $('#say').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const text = reply.value.trim(); if (!text || !attempt) return;
+    const t = summarize(telemetry || freshTelemetry(), text);
+    reply.value = ''; setAwaiting('gatekeeper');
+    const r = await fetch(attempt.say_url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, telemetry: t }) });
+    if (!r.ok) { const d = await r.json(); msg('sys', d.error || 'that did not go through'); setAwaiting('visitor'); }
+  });
+
+  // ---- replay + leaderboard ----
+  async function replay(id) {
+    const r = await fetch('/api/attempts/' + id); if (!r.ok) { location.href = '/'; return; }
+    const a = await r.json(); attempt = { id: a.id };
+    login.hidden = true; interview.hidden = false;
+    buoy.src = '/api/attempts/' + id + '/buoy.png'; buoy.hidden = false;
+    for (const t of a.timeline || []) tl(t.at, t.text);
+    let last = null;
+    for (const t of a.turns || []) { if (t.who === 'gatekeeper') msg('gk', t.text, t.seconds ? t.seconds.toFixed(1) + ' s · $' + (t.cost_usd || 0).toFixed(3) : ''); else { msg('me', t.text); last = t.telemetry; } }
+    renderStats(last);
+    if (a.verdict) showVerdict({ ...a.verdict, cost_usd: a.cost_usd });
+    else if (a.state === 'interviewing' || a.state === 'provisioning') follow(id);
+    else msg('sys', 'This attempt ended without a verdict (' + a.state + ').');
+    if (a.state !== 'interviewing' && a.state !== 'provisioning') $('#say').hidden = true;
+  }
+  async function showBoard(e) {
+    if (e) e.preventDefault();
+    const b = await (await fetch('/api/leaderboard')).json();
+    login.hidden = true; interview.hidden = true; board.hidden = false;
+    $('#board-summary').innerHTML = '';
+    for (const [k, v] of [['decided', b.total], ['granted', b.granted], ['agent door', b.agent_door], ['refused', b.refused]]) { const s = document.createElement('span'); s.className = 'pill'; s.textContent = k + ' ' + v; $('#board-summary').appendChild(s); }
+    const rows = $('#board-rows'); rows.innerHTML = '';
+    for (const r of b.recent) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = '<td></td><td></td><td></td><td><span class="pill"></span></td><td></td><td></td><td><a></a></td>';
+      const c = tr.children; c[0].textContent = r.handle; c[1].textContent = r.declared || '–'; c[2].textContent = r.kind || '–';
+      const pill = c[3].firstChild; pill.textContent = r.door; pill.className = 'pill ' + r.door;
+      c[4].textContent = r.turns; c[5].textContent = '$' + (r.cost_usd || 0).toFixed(3);
+      const a = c[6].firstChild; a.href = '/a/' + r.id; a.textContent = 'watch';
+      rows.appendChild(tr);
+    }
+  }
+  $('#nav-board').addEventListener('click', showBoard);
+  const m = location.pathname.match(/^\/a\/([0-9a-f]{12})$/);
+  if (m) replay(m[1]);
+})();
+</script>
+</body>
+</html>
