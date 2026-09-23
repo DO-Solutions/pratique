@@ -114,10 +114,27 @@ Configuration is entirely by environment variable:
 | `PRATIQUE_PUBLIC_HOST` | The host the site is served from; goes into the sandbox's egress allowlist. |
 | `PORT` | Listen port (default 8080). |
 
+## Deploy
+
+The app runs as one small App Platform service from a container image (the `Dockerfile` is the
+whole build). Any registry works; DigitalOcean Container Registry with deploy-on-push is the
+least ceremony:
+
+```bash
+docker build -t registry.digitalocean.com/$REGISTRY/pratique:latest .
+docker push registry.digitalocean.com/$REGISTRY/pratique:latest     # deploy_on_push redeploys
+```
+
+The app spec needs the five environment variables from the table above (`DIGITALOCEAN_ACCESS_TOKEN`
+as a secret), `http_port: 8080`, and a health check on `/healthz`. Attempts are stored on the
+container's disk, so replays survive restarts of the process but not of the container; a database
+is the obvious next step.
+
 ## Status
 
-Early. The gatekeeper, the client and the smoke test work end to end; the web app is being built
-in the open. Watch the commits.
+Live. Sign-in, both doors, the live event relay, replays and the leaderboard work end to end
+against real sessions. Next: durable storage for replays, a smarter agent door, and the
+gatekeeper reading its telemetry through governed tools.
 
 ## License
 
