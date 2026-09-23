@@ -19,6 +19,7 @@ PRATIQUE_MAX_LIVE.
 from __future__ import annotations
 
 import collections
+import datetime
 import json
 import math
 import os
@@ -633,6 +634,36 @@ def leaderboard() -> Dict[str, Any]:
     }
 
 
+def sweep_orphans(max_age: float = 900, every: float = 300) -> None:
+    """Remove this app's sandboxes that no live attempt owns.
+
+    A container restart mid-interview (a deploy, a crash) leaves an attempt's two sessions alive
+    and paused; they cost nothing but hold two of the team's session slots forever. Every five
+    minutes, any `pratique-<id>` session older than fifteen minutes whose attempt this process
+    does not know as live is removed.
+    """
+    while True:
+        time.sleep(every)
+        try:
+            with ATTEMPTS_LOCK:
+                live = {a.id for a in ATTEMPTS.values() if a.state not in TERMINAL}
+            for s in harness.list_sessions():
+                name = str(s.get("name", ""))
+                if not name.startswith("pratique-"):
+                    continue
+                aid = name[len("pratique-"):].split("-")[0]
+                created = s.get("created_at", "")
+                try:
+                    age = now() - datetime.datetime.fromisoformat(created.replace("Z", "+00:00")).timestamp()
+                except ValueError:
+                    age = 0
+                if aid not in live and age > max_age:
+                    harness.delete(s["session_id"])
+                    sys.stderr.write(f"sweeper: removed orphan {name} ({age / 60:.0f} min old)\n")
+        except Exception as e:  # noqa: BLE001 — the sweeper must outlive any single failure
+            sys.stderr.write(f"sweeper: {e}\n")
+
+
 def load_saved() -> None:
     """Replays and the leaderboard come back from the store; live state does not."""
     n = 0
@@ -660,6 +691,7 @@ def main() -> None:
     mode = f"config {CONFIG_ID[:8]}" if CONFIG_ID else ("inline spec" if INFERENCE_KEY else "NO CREDENTIALS")
     judge = f"harbormaster on {MODELS['ruling']} ({'config ' + JUDGE_CONFIG_ID[:8] if JUDGE_CONFIG_ID else 'inline spec'})" if JUDGE_ENABLED else "no harbormaster"
     print(f"pratique listening on :{PORT} ({mode}; {judge}; store={STORE.kind})", flush=True)
+    threading.Thread(target=sweep_orphans, name="sweeper", daemon=True).start()
     ThreadingHTTPServer(("0.0.0.0", PORT), Handler).serve_forever()
 
 

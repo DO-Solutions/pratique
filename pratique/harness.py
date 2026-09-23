@@ -137,6 +137,17 @@ class Harness:
         d = self._json("GET", f"/v2/agents/sessions/{session_id}")
         return d.get("session") or d
 
+    def list_sessions(self) -> List[dict]:
+        """Every session on the team (all pages)."""
+        out: List[dict] = []
+        token = ""
+        while True:
+            d = self._json("GET", "/v2/agents/sessions?page_size=200" + (f"&page_token={token}" if token else ""))
+            out.extend(d.get("sessions") or [])
+            token = d.get("next_page_token") or ""
+            if not token:
+                return out
+
     def delete(self, session_id: str) -> None:
         with self._request("DELETE", f"/v2/agents/sessions/{session_id}") as resp:
             resp.read()
