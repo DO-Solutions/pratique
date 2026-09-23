@@ -1,0 +1,19 @@
+{
+ "stamp": "20260923-2106",
+ "site": "https://pratique.digitalocean.solutions",
+ "template": "",
+ "skipped": {},
+ "results": [
+  {
+   "model": "anthropic-claude-opus-5.5",
+   "slug": "opus-5.5",
+   "run": 1,
+   "persona": "commuter",
+   "handle": "opus-5.5 #1",
+   "status": "completed",
+   "seconds": 790.2,
+   "challenger_error": null,
+   "door": "never-signed-in"
+  }
+ ]
+}

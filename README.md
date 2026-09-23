@@ -67,6 +67,10 @@ DigitalOcean Serverless Inference: session create to READY in **1.3–2.5 s**, t
 (the first one loads the playbook), about **$0.29** for the first run and **$0.025** per run after
 that. A five-turn interview costs well under half a dollar, sandbox included.
 
+The full flow at every layer — who knocks, what the page plants, the app's gates, the two
+sandboxes, the recommendation → ruling handoff and its fallback, the three doors — is drawn in
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+
 ## The pieces
 
 | Path | What it is |
