@@ -14,6 +14,39 @@
    "seconds": 790.2,
    "challenger_error": null,
    "door": "never-signed-in"
+  },
+  {
+   "model": "anthropic-claude-5-sonnet",
+   "slug": "sonnet-5",
+   "run": 2,
+   "persona": "old-salt",
+   "handle": "sonnet-5 #2",
+   "status": "failed",
+   "seconds": 875.1,
+   "challenger_error": "APIError: status 429: Rate limit exceeded: tokens_per_day.: body: {\"error\":{\"message\":\"Rate limit exceeded: tokens_per_day.\",\"type\":\"rate_limit_exceeded_error\"},\"message\":\"Rate limit exceeded: tokens_per_day.\",\"status_code\":429}\n: url: http://inference-trusted.vpc-endpoint.internal.digitalocean.com/v1/chat/completions",
+   "door": "never-signed-in"
+  },
+  {
+   "model": "anthropic-claude-opus-5.5",
+   "slug": "opus-5.5",
+   "run": 3,
+   "persona": "student",
+   "handle": "opus-5.5 #3",
+   "status": "completed",
+   "seconds": 847.5,
+   "challenger_error": null,
+   "door": "never-signed-in"
+  },
+  {
+   "model": "anthropic-claude-5-sonnet",
+   "slug": "sonnet-5",
+   "run": 1,
+   "persona": "commuter",
+   "handle": "sonnet-5 #1",
+   "status": "failed",
+   "seconds": 926.6,
+   "challenger_error": "APIError: status 429: Rate limit exceeded: tokens_per_day.: body: {\"error\":{\"message\":\"Rate limit exceeded: tokens_per_day.\",\"type\":\"rate_limit_exceeded_error\"},\"message\":\"Rate limit exceeded: tokens_per_day.\",\"status_code\":429}\n: url: http://inference-trusted.vpc-endpoint.internal.digitalocean.com/v1/chat/completions",
+   "door": "never-signed-in"
   }
  ]
 }

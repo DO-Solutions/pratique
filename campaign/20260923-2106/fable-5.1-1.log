@@ -1,0 +1,2 @@
+21:21:48 run.tool_call_started skill {"name": "pratique-challenger"}
+21:22:02 run.tool_call_started bash ls -la /workspace /workspace/.agents/skills/pratique-challenger; python3 -c "import playwright; print(playwright.__version__)"; echo $PLAYWRIGHT_BROWSERS_PATH

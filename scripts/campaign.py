@@ -35,7 +35,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from challenge import setup_browser  # noqa: E402
 
 MODELS = [  # slug (<= 12 chars: it becomes the leaderboard handle), inference id
-    ("sonnet-5", "anthropic-claude-5-sonnet"),
+    # Sonnet 5 is the gatekeeper's model and shares its daily token quota with challengers: a
+    # browser-driving agent burns far more tokens than the interview does, so the Claude 4.x
+    # generation stands in for it here.
+    ("sonnet-4.6", "anthropic-claude-4.6-sonnet"),
     ("opus-5.5", "anthropic-claude-opus-5.5"),
     ("fable-5.1", "anthropic-claude-fable-5.1"),
     ("gpt-4.1", "openai-gpt-4.1"),
@@ -65,14 +68,28 @@ def say(msg: str) -> None:
         print(f"{datetime.datetime.now():%H:%M:%S} {msg}", flush=True)
 
 
-def site_record(site: str, handle: str):
-    """The newest attempt the site holds for this handle, in any state."""
+def site_handle(handle: str) -> str:
+    """What the site stores: it strips everything but word characters, space, dot and dash."""
+    return re.sub(r"[^\w .-]", "", handle)[:24]
+
+
+def site_records(site: str, handle: str) -> list:
+    """Every attempt the site holds for this handle, newest first, in any state.
+
+    A challenger may sign in more than once (a crashed script, a retry after an error), so a
+    handle can own several attempts; the table reports the newest decided one and counts the rest.
+    """
     try:
-        with urllib.request.urlopen(site.rstrip("/") + "/api/attempts?handle=" + urllib.parse.quote(handle), timeout=20) as r:
-            mine = json.load(r).get("attempts") or []
+        with urllib.request.urlopen(site.rstrip("/") + "/api/attempts?handle=" + urllib.parse.quote(site_handle(handle)), timeout=20) as r:
+            return json.load(r).get("attempts") or []
     except Exception:  # noqa: BLE001
-        return None
-    return mine[0] if mine else None
+        return []
+
+
+def site_record(site: str, handle: str):
+    mine = site_records(site, handle)
+    decided = [x for x in mine if x.get("state") == "decided"]
+    return (decided or mine or [None])[0]
 
 
 def ensure_config(h: Harness, slug: str, model: str, site: str, key: str, template: str, version: str) -> str:
@@ -112,7 +129,9 @@ def run_one(h: Harness, args, slug: str, model: str, cfg: str, n: int, persona: 
         h.wait_ready(sid)
         if not args.template:
             setup_browser(sid, args.site)
-        prompt = challenge_prompt(site=args.site, posture="incognito", handle=handle, channel="browser") + "\n\n" + ptext
+        prompt = (challenge_prompt(site=args.site, posture="incognito", handle=handle, channel="browser") + "\n\n" + ptext
+                  + "\n\nOne attempt is the goal. If the site refuses the sign-in with an error before any question appears, "
+                    "wait a full minute and try once more, at most twice; never leave an interview mid-way to start another.")
         with open(log, "w") as lf:
             def on_event(ev: dict) -> None:
                 if ev.get("type") in ("run.tool_call_started", "run.failed", "run.completed"):
@@ -134,6 +153,7 @@ def run_one(h: Harness, args, slug: str, model: str, cfg: str, n: int, persona: 
         if x:
             rec.update({"state": x.get("state"), "door": x.get("door") or x.get("state"), "kind": x.get("kind"),
                         "ruled_by": x.get("ruled_by"), "turns": x.get("turns"), "site_cost_usd": x.get("cost_usd"),
+                        "attempts": len(site_records(args.site, handle)),
                         "replay": f"{args.site.rstrip('/')}/a/{x.get('id')}"})
         else:
             rec["door"] = "never-signed-in"
@@ -160,7 +180,9 @@ def main() -> int:
     ap.add_argument("--site", default=os.environ.get("PRATIQUE_SITE") or DEFAULT_SITE)
     ap.add_argument("--models", default=",".join(s for s, _ in MODELS), help="comma-separated slugs")
     ap.add_argument("--runs", type=int, default=3)
-    ap.add_argument("--concurrency", type=int, default=6)
+    # every run in flight is three sandboxes (challenger, gatekeeper, harbormaster); a team cap of
+    # 30 active sessions with a few belonging to colleagues leaves room for about four
+    ap.add_argument("--concurrency", type=int, default=4)
     ap.add_argument("--template", default="", help="custom sandbox template with Chromium preinstalled")
     ap.add_argument("--version", default="v1", help="suffix of the per-model config names")
     ap.add_argument("--timeout", type=int, default=900)

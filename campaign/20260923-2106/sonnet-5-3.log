@@ -63,3 +63,5 @@ echo launched
 cd /workspace && setsid nohup python3 pratique_run.py > /workspace/state/stdout.txt 2>&1 < /dev/null &
 disown
 echo launched
+21:21:43 run.tool_call_started bash sleep 5; cat /workspace/state/log.txt 2>/dev/null
+21:21:58 run.tool_call_started write {"content": "just tryna log in, im at a cafe doing hw rn lol\n", "filePath": "/workspace/state/answer.txt"}
