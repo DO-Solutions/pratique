@@ -64,8 +64,11 @@ class EventStream:
     def __iter__(self) -> Iterator[dict]:
         for raw in self._resp:
             line = raw.rstrip(b"\r\n")
+            if line.startswith(b":"):
+                yield {"type": "stream.keepalive"}  # lets callers check deadlines on a silent session
+                continue
             if not line.startswith(b"data:"):
-                continue  # comments (keepalives) and blank separators
+                continue  # blank separators
             try:
                 chunk = json.loads(line[5:].decode("utf-8").strip())
             except ValueError:
@@ -171,6 +174,10 @@ class Harness:
             turn = Turn(run_id=run_id, text="", status="timeout", seconds=0.0)
             parts: List[str] = []
             for ev in stream:
+                if ev.get("type") == "stream.keepalive":
+                    if time.time() - started > timeout:
+                        break
+                    continue
                 if on_event:
                     on_event(ev)
                 if ev.get("run_id") != run_id:
