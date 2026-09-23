@@ -104,16 +104,32 @@ def ensure_config(h: Harness, slug: str, model: str, site: str, key: str, templa
 
 
 def preflight(h: Harness, slug: str, cfg: str) -> str:
-    """One cheap turn per model so a model the adapter cannot run does not burn three long runs."""
-    s = h.create_from_config(f"pf-{slug}-{uuid.uuid4().hex[:4]}", cfg)
-    sid = s["session_id"]
-    try:
-        h.wait_ready(sid)
-        t = h.run_turn(sid, "Reply with exactly HARBOR-OK and nothing else.", timeout=150)
-        ok = t.status == "completed" and "HARBOR-OK" in t.text.upper()
-        return "" if ok else (t.error or f"{t.status}: {t.text[:120]!r}")
-    finally:
-        h.delete(sid)
+    """One cheap turn per model so a model the adapter cannot run does not burn three long runs.
+
+    Returns "" when the model answered, otherwise the reason to skip it. A platform hiccup gets
+    one more try; it never raises, so one bad model cannot end the campaign.
+    """
+    last = ""
+    for attempt in range(2):
+        sid = ""
+        try:
+            s = h.create_from_config(f"pf-{slug}-{uuid.uuid4().hex[:4]}", cfg)
+            sid = s["session_id"]
+            h.wait_ready(sid)
+            t = h.run_turn(sid, "Reply with exactly HARBOR-OK and nothing else.", timeout=150)
+            if t.status == "completed" and "HARBOR-OK" in t.text.upper():
+                return ""
+            last = t.error or f"{t.status}: {t.text[:120]!r}"
+        except Exception as e:  # noqa: BLE001
+            last = f"{type(e).__name__}: {str(e)[:160]}"
+        finally:
+            if sid:
+                try:
+                    h.delete(sid)
+                except Exception:  # noqa: BLE001
+                    pass
+        time.sleep(15)
+    return last
 
 
 def run_one(h: Harness, args, slug: str, model: str, cfg: str, n: int, persona: tuple, outdir: Path) -> dict:
@@ -201,7 +217,14 @@ def main() -> int:
 
     configs = {}
     for slug, model in chosen:
-        configs[slug] = ensure_config(h, slug, model, args.site, key, args.template, args.version)
+        for attempt in range(3):   # the API occasionally answers 5xx/524; a config is cheap to retry
+            try:
+                configs[slug] = ensure_config(h, slug, model, args.site, key, args.template, args.version)
+                break
+            except HarnessError as e:
+                say(f"harness {slug}: {str(e)[:120]} (retry {attempt + 1})")
+                time.sleep(10)
+    chosen = [(s, m) for s, m in chosen if s in configs]
     skipped = {}
     if not args.no_preflight:
         with cf.ThreadPoolExecutor(max_workers=args.concurrency) as ex:
@@ -222,7 +245,11 @@ def main() -> int:
             futs.append(ex.submit(run_one, h, args, slug, model, configs[slug], n, persona, outdir))
             time.sleep(8)   # stagger: every attempt provisions two sandboxes on the site's side too
         for f in cf.as_completed(futs):
-            results.append(f.result())
+            try:
+                results.append(f.result())
+            except Exception as e:  # noqa: BLE001 — a run that blew up is a row, not the end of the campaign
+                results.append({"model": "?", "slug": "?", "run": 0, "persona": "", "handle": "", "status": "error",
+                                "seconds": 0.0, "door": "error", "challenger_error": f"{type(e).__name__}: {str(e)[:200]}"})
             (outdir / "results.json").write_text(json.dumps({"stamp": stamp, "site": args.site, "template": args.template,
                                                             "skipped": skipped, "results": results}, indent=1))
 

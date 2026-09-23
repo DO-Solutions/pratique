@@ -110,10 +110,19 @@ class Harness:
         if data is not None:
             headers["Content-Type"] = content_type
         req = urllib.request.Request(self.base + path, method=method, data=data, headers=headers)
-        try:
-            return urllib.request.urlopen(req, timeout=timeout)
-        except urllib.error.HTTPError as e:
-            raise HarnessError(e.code, e.read().decode("utf-8", "replace")) from None
+        # the API fronts through a CDN that occasionally answers 502/503/504/524 for a moment;
+        # idempotent reads and stream opens are retried, writes are not (a retried create is a
+        # second sandbox)
+        retries = 3 if method == "GET" else 0
+        for attempt in range(retries + 1):
+            try:
+                return urllib.request.urlopen(req, timeout=timeout)
+            except urllib.error.HTTPError as e:
+                body_text = e.read().decode("utf-8", "replace")
+                if e.code in (502, 503, 504, 524) and attempt < retries:
+                    time.sleep(3 * (attempt + 1))
+                    continue
+                raise HarnessError(e.code, body_text) from None
 
     def _json(self, method: str, path: str, **kw: Any) -> dict:
         with self._request(method, path, **kw) as resp:
