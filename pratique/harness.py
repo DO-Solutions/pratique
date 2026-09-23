@@ -150,6 +150,20 @@ class Harness:
                 return s
             time.sleep(0.5)
 
+    # -- environment configs --------------------------------------------------------------------
+
+    def list_configs(self) -> List[dict]:
+        return list(self._json("GET", "/v2/agents/configs?page_size=200").get("configs") or [])
+
+    def create_config(self, name: str, manifest_yaml: str) -> dict:
+        """Save a spec as an immutable Environment Config; secrets in it stay server-side."""
+        d = self._json("POST", "/v2/agents/configs", body={"name": name, "manifest_yaml": manifest_yaml})
+        return d.get("config") or d
+
+    def delete_config(self, config_id: str) -> None:
+        with self._request("DELETE", f"/v2/agents/configs/{config_id}") as resp:
+            resp.read()
+
     # -- runs ---------------------------------------------------------------------------------
 
     def send_input(self, session_id: str, text: str) -> str:

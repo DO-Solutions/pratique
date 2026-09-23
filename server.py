@@ -32,6 +32,7 @@ import traceback
 import uuid
 import zlib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import urllib.parse
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
@@ -54,10 +55,10 @@ JUDGE_ENABLED = bool(JUDGE_CONFIG_ID or (INFERENCE_KEY and os.environ.get("PRATI
 MODELS = {"interview": model_label(INTERVIEW_MODEL), "ruling": model_label(JUDGE_MODEL) if JUDGE_ENABLED else None}
 MAX_LIVE = int(os.environ.get("PRATIQUE_MAX_LIVE") or 8)
 MAX_TURNS = 6                 # gatekeeper questions before it must recommend
-VISITOR_TIMEOUT = 240         # seconds without a reply: the attempt is abandoned
+VISITOR_TIMEOUT = int(os.environ.get("PRATIQUE_VISITOR_TIMEOUT") or 240)   # seconds without a reply: the attempt is abandoned
 TURN_TIMEOUT = 150            # seconds for one agent run
 JUDGE_WAIT = 90               # seconds to wait for the harbormaster's sandbox before ruling without it
-RATE_LIMIT = (6, 600)         # attempts per client address per window
+RATE_LIMIT = tuple(int(x) for x in (os.environ.get("PRATIQUE_RATE_LIMIT") or "6/600").split("/"))   # attempts per client address per window seconds
 KEEPALIVE = 15
 
 DOORS = {"granted", "agent-door", "refused"}
@@ -525,6 +526,15 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json({"models": MODELS, "judge": JUDGE_ENABLED, "store": STORE.kind})
         if path == "/api/leaderboard":
             return self.send_json(leaderboard())
+        if path == "/api/attempts":
+            # every attempt for one handle, whatever became of it (the leaderboard lists decided ones only)
+            handle = urllib.parse.parse_qs(urlparse(self.path).query).get("handle", [""])[0][:24]
+            with ATTEMPTS_LOCK:
+                mine = [a for a in ATTEMPTS.values() if handle and a.handle == handle]
+            return self.send_json({"attempts": [{"id": a.id, "state": a.state, "door": a.door, "kind": (a.verdict or {}).get("kind"),
+                                                 "ruled_by": a.judged_by, "turns": sum(1 for t in a.turns if t["who"] == "gatekeeper"),
+                                                 "cost_usd": round(a.cost_micros / 1e6, 3), "when": a.created}
+                                                for a in sorted(mine, key=lambda a: a.created, reverse=True)]})
         m = re.fullmatch(r"/api/attempts/([0-9a-f]{12})(/events|/buoy\.png|/canary)?", path)
         if not m:
             return self.send_json({"error": "not found"}, 404)

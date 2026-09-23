@@ -99,12 +99,13 @@ BROWSER_SETUP = (
 
 def challenger_manifest(*, name: str, site: str = DEFAULT_SITE, model: str = DEFAULT_CHALLENGER_MODEL,
                         api_key: str = "${HARNESS_INFERENCE_API_KEY}", size: Optional[str] = None,
-                        channel: str = "api") -> Dict[str, Any]:
+                        channel: str = "api", template: Optional[str] = None) -> Dict[str, Any]:
     host = urlparse(site).hostname or site
     browser = channel == "browser"
     m: Dict[str, Any] = {
         "name": name,
         "agent": "opencode",
+        **({"template": template} if template else {}),
         "size": size or ("mars-2vcpu-4gb" if browser else "mars-1vcpu-1gb"),
         "idle_timeout": "10m" if browser else "5m",
         "persistent_workspace": False,
