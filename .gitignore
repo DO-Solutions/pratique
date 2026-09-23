@@ -3,3 +3,5 @@ __pycache__/
 .env
 # local attempt store, never the thing you commit
 data/
+# per-campaign run logs and raw results stay local; the curated RESULTS-*.md is what gets committed
+campaign/*/
