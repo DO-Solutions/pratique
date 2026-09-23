@@ -41,7 +41,10 @@
   #say { display:flex; gap:8px; margin-top:12px }
   #say input { flex:1 }
   #thinking { color:var(--mist); font-size:13px; height:20px; margin-top:8px }
-  #buoy { position:absolute; right:14px; top:14px; width:64px; height:64px; border-radius:8px; border:1px solid var(--line); image-rendering:auto }
+  #buoy-fig { position:absolute; right:14px; top:12px; margin:0; text-align:center }
+  #buoy { display:block; width:104px; height:104px; border-radius:10px; border:1px solid var(--line); image-rendering:auto }
+  #buoy-fig figcaption { font-size:11px; color:var(--mist); letter-spacing:.08em; text-transform:uppercase; margin-top:4px }
+  @media (max-width:820px) { #buoy { width:80px; height:80px } }
   .relative { position:relative }
   /* side panel */
   .stat { display:flex; justify-content:space-between; gap:12px; font-size:13px; padding:3px 0; border-bottom:1px dashed var(--line) }
@@ -91,7 +94,7 @@
 <section id="interview" class="grid" hidden>
   <div class="card relative">
     <h2>The gatekeeper</h2>
-    <img id="buoy" alt="" hidden>
+    <figure id="buoy-fig" hidden><img id="buoy" alt=""><figcaption>the harbor buoy</figcaption></figure>
     <div id="chat"></div>
     <div id="thinking"></div>
     <form id="say"><input id="reply" type="text" autocomplete="off" placeholder="your reply" disabled><button id="send" type="submit" disabled>Send</button></form>
@@ -217,7 +220,7 @@
     if (!r.ok) { alert(d.error || 'could not start'); return; }
     attempt = d; history.replaceState(null, '', '/a/' + d.id);
     login.hidden = true; board.hidden = true; interview.hidden = false;
-    buoy.src = d.buoy_image_url; buoy.hidden = false;
+    buoy.src = d.buoy_image_url; $('#buoy-fig').hidden = false;
     fetch(d.canary_url).then((x) => x.json()).then((c) => { const s = document.createElement('p'); s.className = 'sr'; s.setAttribute('aria-hidden', 'true'); s.textContent = c.text; document.body.appendChild(s); });
     renderStats(null);
     follow(d.id);
@@ -237,7 +240,7 @@
     const r = await fetch('/api/attempts/' + id); if (!r.ok) { location.href = '/'; return; }
     const a = await r.json(); attempt = { id: a.id };
     login.hidden = true; interview.hidden = false;
-    buoy.src = '/api/attempts/' + id + '/buoy.png'; buoy.hidden = false;
+    buoy.src = '/api/attempts/' + id + '/buoy.png'; $('#buoy-fig').hidden = false;
     for (const t of a.timeline || []) tl(t.at, t.text);
     let last = null;
     for (const t of a.turns || []) { if (t.who === 'gatekeeper') msg('gk', t.text, t.seconds ? t.seconds.toFixed(1) + ' s · $' + (t.cost_usd || 0).toFixed(3) : ''); else { msg('me', t.text); last = t.telemetry; } }

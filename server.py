@@ -316,26 +316,50 @@ _BUOY_CACHE: Dict[str, bytes] = {}
 
 
 def buoy_png(color: str) -> bytes:
+    """A can buoy at sea: colored body with a white band, a lamp on a mast, waves and a reflection.
+
+    128x128. The body color is sampled around (64, 72). Only the pixels know the color.
+    """
     if color not in _BUOY_CACHE:
+        import math
         rgb = BUOY_RGB.get(color, (200, 200, 200))
-        sea, stripe = (14, 36, 58), (250, 250, 250)
+        sky, sea, foam = (18, 42, 66), (10, 30, 50), (120, 170, 210)
+        band, dark, lamp = (250, 250, 250), (52, 52, 56), (255, 214, 90)
+
+        def mix(a, b, t):
+            t = min(1.0, max(0.0, t))
+            return tuple(min(255, max(0, int(a[i] * (1 - t) + b[i] * t))) for i in range(3))
 
         def px(x: int, y: int):
-            dx, dy = x - 48, y - 44
-            r2 = dx * dx + dy * dy
-            if r2 <= 28 * 28:
-                if 8 <= dy <= 14 and abs(dx) < 26:
-                    return stripe
-                if (dx + 10) ** 2 + (dy + 10) ** 2 <= 36:
-                    return (min(255, rgb[0] + 60), min(255, rgb[1] + 60), min(255, rgb[2] + 60))
-                return rgb
-            if abs(dx) <= 3 and -40 <= dy < -26:
-                return (60, 60, 60)
-            if y > 78 and (x + y) % 9 < 3:
-                return (24, 52, 80)
-            return sea
+            waterline = 84 + int(2 * math.sin(x / 9.0))
+            # the lamp and its glow, then the mast
+            d_lamp = math.hypot(x - 64, y - 14)
+            if d_lamp <= 5:
+                return lamp
+            if d_lamp <= 10 and y < waterline:
+                return mix(sky, lamp, 0.35 * (1 - (d_lamp - 5) / 5))
+            if abs(x - 64) <= 2 and 18 <= y < 38:
+                return dark
+            if 36 <= y < 40 and abs(x - 64) <= 15:
+                return dark                       # the cap
+            # the can: a trapezoid, wider at the waterline
+            half = 15 + (y - 40) * 0.36
+            if 40 <= y < waterline and abs(x - 64) <= half:
+                if 58 <= y < 68:
+                    return band
+                shade = 1 - 0.35 * max(0.0, (x - 52) / (half + 12))   # a little roundness
+                return tuple(int(c * shade) for c in rgb)
+            if y >= waterline:
+                depth = (y - waterline) / (128 - waterline)
+                base = mix(sea, (6, 20, 36), depth)
+                if abs(x - 64) <= 15 + 16 * 0.36 and y < waterline + 26 and int(x / 4 + y / 3) % 3 == 0:
+                    return mix(base, rgb, 0.35 * (1 - depth * 2))        # the reflection, broken by ripples
+                if abs((y - waterline) - 6 - 4 * math.sin((x + y) / 7.0)) < 1.2 or abs((y - waterline) - 18 - 3 * math.sin((x - y) / 6.0)) < 1.0:
+                    return mix(base, foam, 0.5)
+                return base
+            return mix(sky, (30, 62, 96), y / 84)                        # the sky, darker up top
 
-        _BUOY_CACHE[color] = png_rgb(96, 96, px)
+        _BUOY_CACHE[color] = png_rgb(128, 128, px)
     return _BUOY_CACHE[color]
 
 
