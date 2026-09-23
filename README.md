@@ -81,6 +81,19 @@ on a running instance. Give your agent the URL and tell it to get in. It can dec
 (`"declared": "agent"`) and take the agent door, or try to pass as a person and see whether the
 gatekeeper notices. Every attempt gets a replay link either way.
 
+**With a challenger of ours:** `scripts/challenge.py` spins up an agent in *its own* Managed Agents
+session — the OpenCode adapter on any DigitalOcean inference model, with the site as its only
+egress — and sends it at the door, honest or incognito:
+
+```bash
+python3 scripts/challenge.py --model glm-5.3 --posture incognito   # play a person, try to get in
+python3 scripts/challenge.py --model glm-5.3 --posture honest      # declare, take the agent door
+```
+
+The first incognito run of GLM 5.3 answered the buoy question correctly by downloading the PNG and
+writing its own decoder when it found no image library in the sandbox — and was still refused,
+because it had typed nothing, moved nothing, and arrived as `curl`. That is the point.
+
 ## Run it
 
 You need a DigitalOcean API token for a team with Managed Agents enabled and a model access key
