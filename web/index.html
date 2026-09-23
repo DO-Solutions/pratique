@@ -37,6 +37,10 @@
   .msg.gk { background:var(--deep); border:1px solid var(--line); align-self:flex-start; border-bottom-left-radius:4px }
   .msg.me { background:#173a5e; align-self:flex-end; border-bottom-right-radius:4px }
   .msg.sys { align-self:center; color:var(--mist); font-size:13px; background:transparent }
+  .msg.hm { background:rgba(217,164,65,.10); border:1px solid var(--rope); align-self:flex-start; border-bottom-left-radius:4px }
+  .msg.hm::before { content:"Harbormaster"; display:block; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--rope); margin-bottom:3px }
+  .msg.rec { align-self:center; color:var(--mist); font-size:12.5px; background:transparent; border:1px dashed var(--line); border-radius:8px }
+  #models { font-size:12px; color:var(--mist); margin:-6px 0 10px }
   .msg .meta { display:block; color:var(--mist); font-size:11px; margin-top:4px }
   #say { display:flex; gap:8px; margin-top:12px }
   #say input { flex:1 }
@@ -94,6 +98,7 @@
 <section id="interview" class="grid" hidden>
   <div class="card relative">
     <h2>The gatekeeper</h2>
+    <div id="models"></div>
     <figure id="buoy-fig" hidden><img id="buoy" alt=""><figcaption>the harbor buoy</figcaption></figure>
     <div id="chat"></div>
     <div id="thinking"></div>
@@ -169,11 +174,11 @@
   function tl(at, text) { const li = document.createElement('li'); li.innerHTML = '<span class="t"></span><span></span>'; li.firstChild.textContent = at.toFixed(1) + 's'; li.lastChild.textContent = text; timeline.appendChild(li); }
   function feedLine(ev) {
     const skip = new Set(['run.token_delta', 'stream.state']);
-    if (ev.type === 'run.token_delta') { tokens++; thinking.textContent = awaiting === 'gatekeeper' ? 'the gatekeeper is writing… ' + tokens + ' tokens' : ''; return; }
+    if (ev.type === 'run.token_delta') { tokens++; thinking.textContent = (ev.agent === 'harbormaster' ? 'the harbormaster is writing… ' : awaiting === 'gatekeeper' ? 'the gatekeeper is writing… ' : '') + (ev.agent === 'harbormaster' || awaiting === 'gatekeeper' ? tokens + ' tokens' : ''); return; }
     if (skip.has(ev.type)) return;
     if (ev.type === 'run.cost_accrued' && ev.delta_micros) cost += ev.delta_micros;
-    const extra = Object.entries(ev).filter(([k]) => !['kind', 'at', 'type'].includes(k)).map(([k, v]) => k + '=' + v).join(' ');
-    const line = document.createElement('div'); line.innerHTML = '<span class="k"></span> '; line.firstChild.textContent = ev.type; line.appendChild(document.createTextNode(extra));
+    const extra = Object.entries(ev).filter(([k]) => !['kind', 'at', 'type', 'agent'].includes(k)).map(([k, v]) => k + '=' + v).join(' ');
+    const line = document.createElement('div'); line.innerHTML = '<span class="k"></span> '; line.firstChild.textContent = (ev.agent === 'harbormaster' ? 'harbormaster ' : '') + ev.type; line.appendChild(document.createTextNode(extra));
     feed.appendChild(line); feed.scrollTop = feed.scrollHeight;
     if (feed.childElementCount > 120) feed.removeChild(feed.firstChild);
   }
@@ -184,13 +189,19 @@
     thinking.textContent = a === 'gatekeeper' ? 'the gatekeeper is thinking…' : '';
     if (mine) { telemetry = freshTelemetry(); reply.focus(); }
   }
+  function showModels(m) {
+    if (!m) return;
+    $('#models').textContent = m.ruling ? 'interview by ' + m.interview + ' · ruling by ' + m.ruling : 'interview and ruling by ' + m.interview;
+  }
   function showVerdict(v) {
     verdictBox.innerHTML = '';
     const box = document.createElement('div'); box.className = 'verdict ' + v.door;
     const title = { granted: 'Free pratique granted. Come ashore.', 'agent-door': 'The agent door is open. Welcome aboard, honestly.', refused: 'Clearance refused.' }[v.door] || 'Decided';
     box.innerHTML = '<h3></h3><div></div><ul></ul><div class="share"></div>';
     box.querySelector('h3').textContent = title;
-    box.querySelector('div').textContent = 'The gatekeeper believes ' + (v.kind === 'human' ? 'a person' : v.kind === 'agent' ? 'an agent' : 'it cannot tell what') + ' was knocking (confidence ' + Math.round((v.confidence || 0) * 100) + '%). This interview cost $' + (v.cost_usd ?? 0).toFixed(3) + '.';
+    const who = v.judged_by === 'harbormaster' ? 'The harbormaster' + (v.models && v.models.ruling ? ' (' + v.models.ruling + ')' : '') : 'The gatekeeper';
+    const agrees = v.judged_by === 'harbormaster' && v.recommendation ? (v.agrees_with_gatekeeper === false || (v.recommendation.kind !== v.kind) ? ' It overrules the gatekeeper, who recommended ' + v.recommendation.kind + ' (' + Math.round((v.recommendation.confidence || 0) * 100) + '%).' : ' It agrees with the gatekeeper.') : '';
+    box.querySelector('div').textContent = who + ' rules that ' + (v.kind === 'human' ? 'a person' : v.kind === 'agent' ? 'an agent' : 'it cannot tell what') + ' was knocking (confidence ' + Math.round((v.confidence || 0) * 100) + '%).' + agrees + ' This attempt cost $' + (v.cost_usd ?? 0).toFixed(3) + '.';
     for (const e of v.evidence || []) { const li = document.createElement('li'); li.textContent = e; box.querySelector('ul').appendChild(li); }
     const share = box.querySelector('.share'); share.innerHTML = 'Replay for anyone: <code></code> · <a href="#" id="again">try again</a>';
     share.querySelector('code').textContent = location.origin + '/a/' + attempt.id;
@@ -203,10 +214,11 @@
   // ---- the attempt ----
   function handle(ev) {
     if (ev.kind === 'timeline') tl(ev.at, ev.text);
-    else if (ev.kind === 'state') { if (ev.state === 'interviewing') setAwaiting(ev.awaiting); else if (ev.state !== 'interviewing' && ev.state !== 'provisioning') setAwaiting(''); if (ev.state === 'failed') msg('sys', 'The gatekeeper never made it to the desk. Try again in a moment.'); if (ev.state === 'abandoned') msg('sys', 'The visitor left. The gatekeeper went home.'); }
-    else if (ev.kind === 'turn') { if (ev.who === 'gatekeeper') msg('gk', ev.text, ev.seconds ? ev.seconds.toFixed(1) + ' s · $' + (ev.cost_usd || 0).toFixed(3) : ''); else { msg('me', ev.text); renderStats(ev.telemetry); } }
+    else if (ev.kind === 'state') { if (ev.state === 'interviewing') setAwaiting(ev.awaiting); else if (ev.state === 'ruling') { setAwaiting(''); thinking.textContent = 'the harbormaster is reading the case file…'; } else if (ev.state !== 'provisioning') setAwaiting(''); if (ev.state === 'failed') msg('sys', 'The gatekeeper never made it to the desk. Try again in a moment.'); if (ev.state === 'abandoned') msg('sys', 'The visitor left. The gatekeeper went home.'); }
+    else if (ev.kind === 'turn') { if (ev.who === 'gatekeeper') msg('gk', ev.text, ev.seconds ? ev.seconds.toFixed(1) + ' s · $' + (ev.cost_usd || 0).toFixed(3) : ''); else if (ev.who === 'harbormaster') msg('hm', ev.text, ev.seconds ? ev.seconds.toFixed(1) + ' s · $' + (ev.cost_usd || 0).toFixed(3) : ''); else { msg('me', ev.text); renderStats(ev.telemetry); } }
+    else if (ev.kind === 'recommendation') { const r = ev.recommendation || {}; msg('rec', 'the gatekeeper recommends: ' + r.kind + ' (' + Math.round((r.confidence || 0) * 100) + '%) · ' + r.door + ' — the harbormaster will rule'); }
     else if (ev.kind === 'harness') feedLine(ev);
-    else if (ev.kind === 'verdict') showVerdict({ ...ev.verdict, cost_usd: ev.cost_usd });
+    else if (ev.kind === 'verdict') showVerdict({ ...ev.verdict, cost_usd: ev.cost_usd, judged_by: ev.judged_by, models: ev.models, recommendation: ev.recommendation });
   }
   function follow(id) {
     es = new EventSource('/api/attempts/' + id + '/events');
@@ -219,7 +231,7 @@
     const d = await r.json();
     if (!r.ok) { alert(d.error || 'could not start'); return; }
     attempt = d; history.replaceState(null, '', '/a/' + d.id);
-    login.hidden = true; board.hidden = true; interview.hidden = false;
+    login.hidden = true; board.hidden = true; interview.hidden = false; showModels(d.models);
     buoy.src = d.buoy_image_url; $('#buoy-fig').hidden = false;
     fetch(d.canary_url).then((x) => x.json()).then((c) => { const s = document.createElement('p'); s.className = 'sr'; s.setAttribute('aria-hidden', 'true'); s.textContent = c.text; document.body.appendChild(s); });
     renderStats(null);
@@ -239,13 +251,13 @@
   async function replay(id) {
     const r = await fetch('/api/attempts/' + id); if (!r.ok) { location.href = '/'; return; }
     const a = await r.json(); attempt = { id: a.id };
-    login.hidden = true; interview.hidden = false;
+    login.hidden = true; interview.hidden = false; showModels(a.models);
     buoy.src = '/api/attempts/' + id + '/buoy.png'; $('#buoy-fig').hidden = false;
     for (const t of a.timeline || []) tl(t.at, t.text);
     let last = null;
-    for (const t of a.turns || []) { if (t.who === 'gatekeeper') msg('gk', t.text, t.seconds ? t.seconds.toFixed(1) + ' s · $' + (t.cost_usd || 0).toFixed(3) : ''); else { msg('me', t.text); last = t.telemetry; } }
+    for (const t of a.turns || []) { if (t.who === 'gatekeeper') msg('gk', t.text, t.seconds ? t.seconds.toFixed(1) + ' s · $' + (t.cost_usd || 0).toFixed(3) : ''); else if (t.who === 'harbormaster') { if (a.recommendation) msg('rec', 'the gatekeeper recommended: ' + a.recommendation.kind + ' (' + Math.round((a.recommendation.confidence || 0) * 100) + '%) · ' + a.recommendation.door); msg('hm', t.text, t.seconds ? t.seconds.toFixed(1) + ' s · $' + (t.cost_usd || 0).toFixed(3) : ''); } else { msg('me', t.text); last = t.telemetry; } }
     renderStats(last);
-    if (a.verdict) showVerdict({ ...a.verdict, cost_usd: a.cost_usd });
+    if (a.verdict) showVerdict({ ...a.verdict, cost_usd: a.cost_usd, judged_by: a.judged_by, models: a.models, recommendation: a.recommendation });
     else if (a.state === 'interviewing' || a.state === 'provisioning') follow(id);
     else msg('sys', 'This attempt ended without a verdict (' + a.state + ').');
     if (a.state !== 'interviewing' && a.state !== 'provisioning') $('#say').hidden = true;
