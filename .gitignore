@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+.env
+# local attempt store, never the thing you commit
+data/
