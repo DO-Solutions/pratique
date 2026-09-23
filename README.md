@@ -43,11 +43,19 @@ sequenceDiagram
     W-->>V: clearance granted / agent door / refused, with a replay link
 ```
 
-- **One sandbox per attempt.** Every login gets its own microVM running Claude Code under the
-  Harness Runtime, started from a saved Environment Config and destroyed when the verdict lands.
+- **Two agents per attempt, each in its own sandbox.** The *gatekeeper* (Claude Code adapter,
+  Claude Sonnet 5) interviews and closes with a recommendation. The *harbormaster* (OpenCode
+  adapter, Claude Fable 5.1) is provisioned at sign-in, receives the case file — the planted facts,
+  the transcript, every reply's telemetry, the recommendation — and rules, agreeing or overruling
+  with evidence. Both start from saved Environment Configs and are destroyed when the ruling lands.
   Nothing is shared between visitors.
-- **One run per turn.** Each visitor reply is a run inside that session; the gatekeeper's answer
-  is the next question. The session keeps the conversation, so the gatekeeper remembers.
+- **One run per turn.** Each visitor reply is a run inside the gatekeeper's session; its answer
+  is the next question. The session keeps the conversation, so the gatekeeper remembers. The
+  ruling is one run in the harbormaster's session.
+- **Two models, on purpose.** A fast model runs the conversation; a stronger one reads the whole
+  file cold. In its first run the harbormaster overruled a grant: the visitor's telemetry claimed
+  eleven seconds of typing behind a reply that had arrived in 395 ms, and was byte-identical across
+  replies — the gatekeeper had taken the cadence numbers at face value.
 - **Signals, not just words.** The page records typing cadence, paste events, pointer movement
   and reply latency, hides a canary phrase only a DOM reader can see, and draws a buoy on a canvas
   that never appears in the page text. The gatekeeper gets all of it with every turn.
@@ -63,10 +71,13 @@ that. A five-turn interview costs well under half a dollar, sandbox included.
 
 | Path | What it is |
 |---|---|
-| `gatekeeper/SKILL.md` | The gatekeeper's playbook: who it is, what it receives, how it interviews, the reply contract. This is the whole personality. |
-| `gatekeeper/agents.yaml` | The Harness Runtime environment spec (rendered from `pratique/gatekeeper.py` — edit the source, run `scripts/render_spec.py`). |
+| `gatekeeper/SKILL.md` | The gatekeeper's playbook: who it is, what it receives, how it interviews, the reply contract. |
+| `gatekeeper/HARBORMASTER.md` | The harbormaster's playbook: how to read a case file and rule. |
+| `gatekeeper/agents.yaml`, `gatekeeper/harbormaster.yaml` | The two Harness Runtime environment specs (rendered from `pratique/gatekeeper.py` — edit the source, run `scripts/render_spec.py [--judge]`). |
 | `pratique/harness.py` | A dependency-free client for the Harness Runtime sessions API: create, send a turn, follow the event stream, remove. |
-| `pratique/gatekeeper.py` | Builds the spec and the prompts, parses the gatekeeper's replies. |
+| `pratique/gatekeeper.py` | Builds both specs, the prompts and the case file; parses the agents' replies. |
+| `pratique/store.py` | Where attempts live: disk, or an S3-compatible bucket signed with the standard library. |
+| `pratique/challenger.py`, `scripts/challenge.py` | An agent that tries to get in — over the API or through the real page in its own Chromium sandbox. |
 | `scripts/probe.py` | End-to-end smoke test: one session, three turns, timings and cost, teardown. |
 | `server.py` | The web app: login page, the two doors, event relay, replays, leaderboard. |
 
@@ -112,8 +123,10 @@ server-side:
 
 ```bash
 python3 scripts/render_spec.py > gatekeeper/agents.yaml
+python3 scripts/render_spec.py --judge > gatekeeper/harbormaster.yaml
 doctl harness-runtime config create --spec gatekeeper/agents.yaml --name pratique-gatekeeper-v1
-export PRATIQUE_CONFIG_ID=<config id>
+doctl harness-runtime config create --spec gatekeeper/harbormaster.yaml --name pratique-harbormaster-v1
+export PRATIQUE_CONFIG_ID=<gatekeeper config id> PRATIQUE_JUDGE_CONFIG_ID=<harbormaster config id>
 ```
 
 Configuration is entirely by environment variable:
@@ -121,10 +134,12 @@ Configuration is entirely by environment variable:
 | Variable | Meaning |
 |---|---|
 | `DIGITALOCEAN_ACCESS_TOKEN` | API token for the team running the sandboxes. |
-| `PRATIQUE_CONFIG_ID` | Environment Config to start sessions from. If unset, the app posts the inline spec and needs `HARNESS_INFERENCE_API_KEY`. |
-| `HARNESS_INFERENCE_API_KEY` | Model access key, only needed without a config id. |
-| `PRATIQUE_MODEL` | Inference model id (default `anthropic-claude-5-sonnet`). |
-| `PRATIQUE_PUBLIC_HOST` | The host the site is served from; goes into the sandbox's egress allowlist. |
+| `PRATIQUE_CONFIG_ID`, `PRATIQUE_JUDGE_CONFIG_ID` | Environment Configs to start the gatekeeper and the harbormaster from. If unset, the app posts the inline specs and needs `HARNESS_INFERENCE_API_KEY`. |
+| `HARNESS_INFERENCE_API_KEY` | Model access key, only needed without config ids. |
+| `PRATIQUE_MODEL`, `PRATIQUE_JUDGE_MODEL` | Inference model ids (defaults `anthropic-claude-5-sonnet`, `anthropic-claude-fable-5.1`). |
+| `PRATIQUE_JUDGE` | Set to `0` to run without a harbormaster (the gatekeeper's recommendation becomes the verdict). |
+| `PRATIQUE_PUBLIC_HOST` | The host the site is served from; goes into the sandboxes' egress allowlist. |
+| `SPACES_KEY`, `SPACES_SECRET`, `SPACES_BUCKET`, `SPACES_REGION` | Durable storage for attempts in an S3-compatible bucket. Without them, attempts live on disk under `PRATIQUE_DATA_DIR`. |
 | `PORT` | Listen port (default 8080). |
 
 ## Deploy

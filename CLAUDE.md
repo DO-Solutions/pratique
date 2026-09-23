@@ -12,10 +12,16 @@ variable only (see the README table).
 
 ## Where things live
 
-- `gatekeeper/SKILL.md` — the gatekeeper's personality and reply contract. Most behavior changes
-  belong here, not in code.
-- `pratique/gatekeeper.py` — builds the environment spec (the skill is inlined), the prompts, and
-  parses replies (`parse_reply` tolerates prose and fences around the JSON).
+- `gatekeeper/SKILL.md` — the gatekeeper's personality and reply contract (it *recommends*);
+  `gatekeeper/HARBORMASTER.md` — the harbormaster's (it *rules*, and may overrule). Most behavior
+  changes belong in these two files, not in code.
+- `pratique/gatekeeper.py` — builds both environment specs (skills inlined), the prompts and the
+  case file, and parses replies (`parse_reply` tolerates prose and fences, accepts
+  `recommendation` or `verdict`). The harbormaster runs on the **OpenCode** adapter because the
+  Claude Code adapter's bundled client refuses the newest Anthropic models.
+- `pratique/store.py` — attempts persist to an S3-compatible bucket (SigV4, stdlib) or to disk.
+- `pratique/challenger.py` + `scripts/challenge.py` — the attacker: API channel or a real browser
+  (Playwright + Chromium installed through `doctl harness-runtime exec` first).
 - `pratique/harness.py` — the sessions API client. `run_turn` opens the event stream *before*
   posting input so nothing is missed; events for other runs are passed to `on_event` but not
   collected.
